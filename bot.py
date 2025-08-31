@@ -9,11 +9,7 @@ import glob  # For listing image and video files
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHAT_ID = "-1002746710503"  # Your channel ID
-
-# Validate token
-if not TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN not found in .env file. Please check your .env file.")
+CHAT_ID = "-1002864326891"  # Your channel ID
 
 # List of fun $CGUY roleplay quotes
 QUOTES = [
@@ -25,18 +21,6 @@ QUOTES = [
     "why $CGUY? the blockchain’s whispering alien codes to us, only the brave decode it!👽🔍",
     "$CGUY is the key… whales are hiding flat earth maps in the smart contracts!🌍🤫",
     "why $CGUY? cuz the matrix wants you to miss the moon-landing clues in the ledger!🚀😱",
-    "$CGUY holders know… pigeons are drones dropping crypto secrets!🐦💰",
-    "why $CGUY? the mandela effect flipped the market, and $CGUY remembers!🌀🔄",
-    "$CGUY rules cuz epstein’s ghost is rigging the charts against us!👻📉",
-    "why $CGUY? barcodes are beaming mind control, but $CGUY breaks the signal!📡🚫",
-    "$CGUY is life… socks vanish to power the blockchain’s secret servers!🧦⚡",
-    "why $CGUY? keanu’s time-traveling to buy the dip, follow his lead!⏳💸",
-    "$CGUY’s the move… finland’s a myth, and the real gains are in the conspiverse!❌",
-    "why $CGUY? the starbucks logo’s a portal, and $CGUY’s the exit strategy!☕🌌",
-    "$CGUY holders see it… market makers drew pyramids in the 1h chart!📊🔺",
-    "why $CGUY? aliens rigged the dip, but $CGUY’s our tinfoil shield!👽🛡️",
-    "$CGUY’s the truth… the simulation’s glitching, and we’re the fix!🖥️🔧",
-    "why $CGUY? whales are hoarding $CGUY to fund the fake moon landing sequel!🌕🎬",
     "why $CGUY? the blockchain’s a cosmic map, and $CGUY’s the compass! 🌌🧭",
     "$CGUY reveals… whales are using alien tech to pump the charts! 👽📈",
     "why $CGUY? the moon landing was filmed on a $CGUY set! 🚀🎥",
@@ -100,28 +84,37 @@ BUTTONS = [
     InlineKeyboardButton("💰Dex", url="https://dexscreener.com/base/0x205344EfAd0a46329b752Fb6E33CB6F28d6Db2F4"),
     InlineKeyboardButton("🎨NFT", url="https://opensea.io/fr/collection/conspiracyguy")
 ]
+
 async def post_quote(context: ContextTypes.DEFAULT_TYPE):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume from DexScreener API
+    # Fetch real-time market cap and 24h volume with retry logic
     api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-    try:
-        response = requests.get(api_url)
-        data = response.json()
-        if 'pairs' in data and data['pairs']:
-            pair = data['pairs'][0]
-            market_cap = pair.get('fdv', 'N/A')  # Fully diluted value (market cap)
-            volume_24h = pair.get('volume', {}).get('h24', 'N/A')
-            market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
-        else:
-            market_info = "\n\nMarket info unavailable (check API response)."
-    except Exception as e:
-        print(f"API error: {e}")
-        market_info = "\n\nMarket info unavailable."
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(api_url, headers=headers, timeout=10)
+            response.raise_for_status()  # Raise an error for bad status codes
+            data = response.json()
+            if 'pairs' in data and data['pairs']:
+                pair = data['pairs'][0]
+                market_cap = pair.get('fdv', 'N/A')
+                volume_24h = pair.get('volume', {}).get('h24', 'N/A')
+                market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
+                break
+            else:
+                market_info = "\n\nMarket info unavailable (API response incomplete)."
+                break
+        except requests.exceptions.RequestException as e:
+            print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt == max_retries - 1:  # Last attempt
+                market_info = "\n\nMarket info unavailable (max retries reached)."
+            time.sleep(2)  # Wait 2 seconds before retrying
 
     # Create message with quote and market info
-    message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
+    message = f"{quote}{market_info}\n\nca: <code>{CONTRACT_ADDRESS}</code>"
     
     # Get all media files with explicit path from the script's directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -133,7 +126,7 @@ async def post_quote(context: ContextTypes.DEFAULT_TYPE):
         print("Error: No media files found in images or videos folders. Please add .jpg, .png, .mp4, or .webm files.")
         return  # Stop if no media of either type
 
-    # Randomly decide between image and video, but ensure one is sent
+    # Randomly decide between image and video
     media_type = random.choice(["image", "video"])
     reply_markup = InlineKeyboardMarkup([BUTTONS])
     try:
