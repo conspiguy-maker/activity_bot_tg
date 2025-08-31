@@ -13,9 +13,6 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if TOKEN is None or not isinstance(TOKEN, str):
     raise ValueError("TELEGRAM_BOT_TOKEN not found or invalid in .env file. Please check your .env file.")
 CHAT_ID = "-1002864326891"
-COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
-if COINGECKO_API_KEY is None or not isinstance(COINGECKO_API_KEY, str):
-    raise ValueError("COINGECKO_API_KEY not found or invalid in .env file. Please check your .env file.")
 
 # Flag to track if /start has been used
 start_used = False
@@ -122,27 +119,29 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume with CoinGecko
-    api_url = f"https://api.coingecko.com/api/v3/coins/ethereum/contract/{CONTRACT_ADDRESS}"
-    headers = {"x-cg-api-key": COINGECKO_API_KEY, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    # Fetch real-time market cap and 24h volume with DexScreener
+    api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = requests.get(api_url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
-            market_cap = data.get('market_data', {}).get('market_cap', {}).get('usd', 'N/A')
-            volume_24h = data.get('market_data', {}).get('total_volume', {}).get('usd', 'N/A')
-            market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
-            break
+            if 'pairs' in data and data['pairs']:
+                pair = data['pairs'][0]
+                market_cap = pair.get('fdv', 'N/A')
+                volume_24h = pair.get('volume', {}).get('h24', 'N/A')
+                market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
+                break
+            else:
+                market_info = "\n\nMarket info unavailable (API response incomplete)."
+                break
         except requests.exceptions.HTTPError as e:
             print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
             if attempt == max_retries - 1:
                 market_info = "\n\nMarket info unavailable (max retries reached)."
             time.sleep(2)
-        except KeyError:
-            market_info = "\n\nMarket info unavailable (data not found)."
-            break
 
     # Create message with quote and market info
     message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
@@ -228,27 +227,29 @@ async def post_every_two_minutes(context: CallbackContext):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume with CoinGecko
-    api_url = f"https://api.coingecko.com/api/v3/coins/ethereum/contract/{CONTRACT_ADDRESS}"
-    headers = {"x-cg-api-key": COINGECKO_API_KEY, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    # Fetch real-time market cap and 24h volume with DexScreener
+    api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = requests.get(api_url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
-            market_cap = data.get('market_data', {}).get('market_cap', {}).get('usd', 'N/A')
-            volume_24h = data.get('market_data', {}).get('total_volume', {}).get('usd', 'N/A')
-            market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
-            break
+            if 'pairs' in data and data['pairs']:
+                pair = data['pairs'][0]
+                market_cap = pair.get('fdv', 'N/A')
+                volume_24h = pair.get('volume', {}).get('h24', 'N/A')
+                market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
+                break
+            else:
+                market_info = "\n\nMarket info unavailable (API response incomplete)."
+                break
         except requests.exceptions.HTTPError as e:
             print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
             if attempt == max_retries - 1:
                 market_info = "\n\nMarket info unavailable (max retries reached)."
             time.sleep(2)
-        except KeyError:
-            market_info = "\n\nMarket info unavailable (data not found)."
-            break
 
     # Create message with quote and market info
     message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
@@ -311,10 +312,10 @@ def main():
     if application.job_queue:
         application.job_queue.run_once(post_init, when=0, data=application)
 
-    # Start the bot with webhook
-    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", "https://activity-bot-tg.onrender.com")
+    # Start the bot with webhook for Railway
+    WEBHOOK_URL = os.getenv("RAILWAY_URL", "https://your-railway-url.up.railway.app")
     if not WEBHOOK_URL.startswith("http"):
-        raise ValueError("RENDER_EXTERNAL_URL must be a valid HTTPS URL. Check Render environment variables.")
+        raise ValueError("RAILWAY_URL must be a valid HTTPS URL. Check Railway environment variables.")
     PORT = int(os.getenv("PORT", 8000))
     application.run_webhook(
         listen="0.0.0.0",
