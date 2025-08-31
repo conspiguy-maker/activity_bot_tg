@@ -121,7 +121,7 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
     
     # Fetch real-time market cap and 24h volume with retry logic and handle 403
     api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}  # Added User-Agent
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}  # Enhanced headers
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -139,8 +139,8 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
                 break
         except requests.exceptions.HTTPError as e:
             if response.status_code == 403:
-                print(f"API 403 Forbidden: {e}. DexScreener may require an API key or have rate limits.")
-                market_info = "\n\nMarket info unavailable (403 Forbidden - check DexScreener access)."
+                print(f"API 403 Forbidden: {e}. DexScreener may require an API key or block this IP.")
+                market_info = "\n\nMarket info unavailable (403 Forbidden - consider CoinGecko or API key)."
             else:
                 print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
                 if attempt == max_retries - 1:
@@ -231,34 +231,34 @@ async def post_every_two_minutes(context: CallbackContext):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-   # Fetch real-time market cap and 24h volume with retry logic and handle 403
-api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}  # Enhanced headers
-max_retries = 3
-for attempt in range(max_retries):
-    try:
-        response = requests.get(api_url, headers=headers, timeout=10)
-        response.raise_for_status()  # Raises HTTPError for 403
-        data = response.json()
-        if 'pairs' in data and data['pairs']:
-            pair = data['pairs'][0]
-            market_cap = pair.get('fdv', 'N/A')
-            volume_24h = pair.get('volume', {}).get('h24', 'N/A')
-            market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
-            break
-        else:
-            market_info = "\n\nMarket info unavailable (API response incomplete)."
-            break
-    except requests.exceptions.HTTPError as e:
-        if response.status_code == 403:
-            print(f"API 403 Forbidden: {e}. DexScreener may require an API key or block this IP.")
-            market_info = "\n\nMarket info unavailable (403 Forbidden - consider CoinGecko or API key)."
-        else:
-            print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
-            if attempt == max_retries - 1:
-                market_info = "\n\nMarket info unavailable (max retries reached)."
-        time.sleep(2)
-        
+    # Fetch real-time market cap and 24h volume with retry logic and handle 403
+    api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}  # Enhanced headers
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(api_url, headers=headers, timeout=10)
+            response.raise_for_status()  # Raises HTTPError for 403
+            data = response.json()
+            if 'pairs' in data and data['pairs']:
+                pair = data['pairs'][0]
+                market_cap = pair.get('fdv', 'N/A')
+                volume_24h = pair.get('volume', {}).get('h24', 'N/A')
+                market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
+                break
+            else:
+                market_info = "\n\nMarket info unavailable (API response incomplete)."
+                break
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 403:
+                print(f"API 403 Forbidden: {e}. DexScreener may require an API key or block this IP.")
+                market_info = "\n\nMarket info unavailable (403 Forbidden - consider CoinGecko or API key)."
+            else:
+                print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
+                if attempt == max_retries - 1:
+                    market_info = "\n\nMarket info unavailable (max retries reached)."
+            time.sleep(2)
+
     # Create message with quote and market info
     message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
     
