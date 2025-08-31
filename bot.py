@@ -313,7 +313,7 @@ def main():
         application.job_queue.run_once(post_init, when=0, data=application)
 
     # Start the bot with webhook for Railway
-    WEBHOOK_URL = os.getenv("RAILWAY_URL", "https://your-railway-url.up.railway.app")
+    WEBHOOK_URL = os.getenv("RAILWAY_URL", "https://activity_bot_tg.up.railway.app")
     if not WEBHOOK_URL.startswith("http"):
         raise ValueError("RAILWAY_URL must be a valid HTTPS URL. Check Railway environment variables.")
     PORT = int(os.getenv("PORT", 8000))
