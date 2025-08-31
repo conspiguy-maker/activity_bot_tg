@@ -1,6 +1,7 @@
 import os
 import random
 import requests
+import time  # Added to fix NameError
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackContext
 from dotenv import load_dotenv
@@ -118,14 +119,14 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume with retry logic
+    # Fetch real-time market cap and 24h volume with retry logic and handle 403
     api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}  # Added User-Agent
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = requests.get(api_url, headers=headers, timeout=10)
-            response.raise_for_status()
+            response.raise_for_status()  # Raises HTTPError for 403
             data = response.json()
             if 'pairs' in data and data['pairs']:
                 pair = data['pairs'][0]
@@ -136,10 +137,14 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
             else:
                 market_info = "\n\nMarket info unavailable (API response incomplete)."
                 break
-        except requests.exceptions.RequestException as e:
-            print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
-            if attempt == max_retries - 1:
-                market_info = "\n\nMarket info unavailable (max retries reached)."
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 403:
+                print(f"API 403 Forbidden: {e}. DexScreener may require an API key or have rate limits.")
+                market_info = "\n\nMarket info unavailable (403 Forbidden - check DexScreener access)."
+            else:
+                print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
+                if attempt == max_retries - 1:
+                    market_info = "\n\nMarket info unavailable (max retries reached)."
             time.sleep(2)
 
     # Create message with quote and market info
@@ -226,14 +231,14 @@ async def post_every_two_minutes(context: CallbackContext):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume with retry logic
+    # Fetch real-time market cap and 24h volume with retry logic and handle 403
     api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}  # Added User-Agent
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = requests.get(api_url, headers=headers, timeout=10)
-            response.raise_for_status()
+            response.raise_for_status()  # Raises HTTPError for 403
             data = response.json()
             if 'pairs' in data and data['pairs']:
                 pair = data['pairs'][0]
@@ -244,10 +249,14 @@ async def post_every_two_minutes(context: CallbackContext):
             else:
                 market_info = "\n\nMarket info unavailable (API response incomplete)."
                 break
-        except requests.exceptions.RequestException as e:
-            print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
-            if attempt == max_retries - 1:
-                market_info = "\n\nMarket info unavailable (max retries reached)."
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 403:
+                print(f"API 403 Forbidden: {e}. DexScreener may require an API key or have rate limits.")
+                market_info = "\n\nMarket info unavailable (403 Forbidden - check DexScreener access)."
+            else:
+                print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
+                if attempt == max_retries - 1:
+                    market_info = "\n\nMarket info unavailable (max retries reached)."
             time.sleep(2)
 
     # Create message with quote and market info
@@ -312,16 +321,16 @@ def main():
         application.job_queue.run_once(post_init, when=0, data=application)
 
     # Start the bot with webhook
-    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", "https://activity-bot-tg.onrender.com")  # Use your provided URL
+    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", "https://activity-bot-tg.onrender.com")
     if not WEBHOOK_URL.startswith("http"):
         raise ValueError("RENDER_EXTERNAL_URL must be a valid HTTPS URL. Check Render environment variables.")
-    PORT = int(os.getenv("PORT", 8000))  # Render provides PORT
+    PORT = int(os.getenv("PORT", 8000))
     application.run_webhook(
         listen="0.0.0.0",
         port=PORT,
         url_path=TOKEN,
         webhook_url=WEBHOOK_URL + "/" + TOKEN,
-        drop_pending_updates=True  # Clear old updates to avoid conflicts
+        drop_pending_updates=True
     )
 
 if __name__ == "__main__":
