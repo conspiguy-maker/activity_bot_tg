@@ -1,7 +1,6 @@
 import os
 import random
 import requests
-import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackContext
 from dotenv import load_dotenv
@@ -57,44 +56,14 @@ QUOTES = [
     "$CGUY sees… finland’s a hologram, and $CGUY’s the real deal! 🇫🇮👻",
     "why $CGUY? the starbucks portal leads to $CGUY moonshots! ☕🌕",
     "$CGUY holders spot… market makers etched ufo sigils in the 4h chart! 👾📊",
-    "why $CGUY? aliens shorted eth to boost $CGUY bags! 👽💼",
+    "why $CGUY? aliens are dumping altcoins to hoard $CGUY! 👽💰",
     "$CGUY’s the fix… the simulation’s crashing, and we’re the patch! 🖥️🛠️",
     "why $CGUY? whales built a flat earth vault for $CGUY stashes! 🌍🔒",
     "$CGUY whispers… pigeons are govt spies, but we outsmart ‘em! 🐦🤓",
     "why $CGUY? the blockchain’s a riddle, and $CGUY’s the answer! 🧩💡",
-    "$CGUY rules… socks vanish to power the conspiverse servers! 🧦🌠",
-    "why $CGUY? keanu’s time-traveling to hodl $CGUY forever! ⏰🙌",
-    "$CGUY’s the play… market dips spell “conspiracy” in hex! 🌐🔮",
-    "why $CGUY? the conspiverse is alive, and $CGUY’s its heartbeat! 🌌💓",
-    "$CGUY uncovers… epstein’s bunker mined $CGUY in secret! 🏞️⛏️",
-    "why $CGUY? barcodes are mind lasers, $CGUY’s our foil hat! 📡🧠",
-    "$CGUY’s the wave… aliens are stacking $CGUY to invade! 👾💰",
-    "why $CGUY? the mandela effect hid our $CGUY pumps! 🌀📈",
-    "$CGUY holders see… the starbucks logo’s a $CGUY summoning circle! ☕🔮",
-    "why $CGUY? whales are sailing flat earth ships with $CGUY cargo! 🌍⛵",
-    "$CGUY’s the signal… pigeons dropped the $CGUY resistance level! 🐦📉",
-    "why $CGUY? the simulation’s a glitch, and $CGUY’s the reboot! 🖥️🔄",
-    "$CGUY forever… keanu’s time profits are all $CGUY moon dust! ⏳🌕",
-    "why $CGUY? the blockchain’s a star map, and $CGUY’s the north star! 🌟🧭",
-    "$CGUY knows… whales are using ufo tech to rig the dips! 👽📉",
-    "why $CGUY? the moon landing script was paid in $CGUY! 🚀💸",
-    "$CGUY sees… pigeons are carrying $CGUY seeds to the masses! 🐦🌱",
-    "why $CGUY? the mandela effect swapped our charts, $CGUY fixes it! 🌀📊",
-    "$CGUY’s the secret… epstein’s jet flew on $CGUY fuel! ✈️⛽",
-    "why $CGUY? barcodes are alien beacons, $CGUY’s our shield! 📡🛡️",
-    "$CGUY vibes… socks are the matrix’s $CGUY battery pack! 🧦🔋",
-    "why $CGUY? keanu’s time-hopping to stack $CGUY bags! ⏳💼",
-    "$CGUY reveals… finland’s a simulation glitch, $CGUY’s the key out! 🇫🇮🔓",
-    "why $CGUY? the starbucks portal’s a $CGUY rocket launchpad! ☕🚀",
-    "$CGUY holders decode… market makers hid flat earth runes in the data! 🌍🔤",
-    "why $CGUY? aliens are dumping altcoins to hoard $CGUY! 👽💰",
-    "$CGUY’s the cure… the simulation’s sick, and $CGUY’s the medicine! 🖥️💊",
-    "why $CGUY? whales are building $CGUY pyramids under the sea! 🌊🔺",
-    "$CGUY whispers… pigeons are dropping $CGUY truth bombs! 🐦💣",
-    "why $CGUY? the blockchain’s a conspiracy web, $CGUY’s the spider! 🕸️🕷️",
     "$CGUY rules… socks are powering the $CGUY moon mission! 🧦🌕",
     "why $CGUY? keanu’s time-travel profits are all $CGUY moonrocks! ⏳🌙",
-    "$CGUY’s the vibe… the conspiverse runs on $CGUY energy! 🌠⚡"
+    "why $CGUY? the conspiverse runs on $CGUY energy! 🌠⚡"
 ]
 
 # Token contract address
@@ -174,7 +143,7 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
             time.sleep(2)
 
     # Create message with quote and market info
-    message = f"{quote}{market_info}\n\nca: <code>{CONTRACT_ADDRESS}</code>"
+    message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
     
     # Get all media files with explicit path from the script's directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -342,8 +311,18 @@ def main():
     if application.job_queue:
         application.job_queue.run_once(post_init, when=0, data=application)
 
-    # Start the bot
-    application.run_polling()
+    # Start the bot with webhook
+    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", "https://activity-bot-tg.onrender.com")  # Use your provided URL
+    if not WEBHOOK_URL.startswith("http"):
+        raise ValueError("RENDER_EXTERNAL_URL must be a valid HTTPS URL. Check Render environment variables.")
+    PORT = int(os.getenv("PORT", 8000))  # Render provides PORT
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=TOKEN,
+        webhook_url=WEBHOOK_URL + "/" + TOKEN,
+        drop_pending_updates=True  # Clear old updates to avoid conflicts
+    )
 
 if __name__ == "__main__":
     main()
