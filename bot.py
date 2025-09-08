@@ -1,20 +1,19 @@
 import os
 import random
-import requests
 import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackContext
 from dotenv import load_dotenv
-import glob
+import glob  # For listing image and video files
 
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if TOKEN is None or not isinstance(TOKEN, str):
     raise ValueError("TELEGRAM_BOT_TOKEN not found or invalid in .env file. Please check your .env file.")
-CHAT_ID = "-1002864326891"
+CHAT_ID = "-1002746710503"  # Use a test group ID for this version—change to your channel if needed
 
-# Flag to track if /start has been used
+# Flag to track if /start has been used (we're using /activate_conspiverse as the trigger)
 start_used = False
 
 # List of $CGUY-style messages for non-admin or non-admin-bot conditions
@@ -26,8 +25,8 @@ NOT_ADMIN_MESSAGES = [
     "🌍 $CGUY Truth! Flat earth vault is admin-sealed—contact an overlord! 🔒"
 ]
 
-# List of $CGUY-style messages for repeated /start attempts
-START_MESSAGES = [
+# List of $CGUY-style messages for repeated /activate_conspiverse attempts
+ACTIVATE_MESSAGES = [
     "🛸 $CGUY Alert! The conspiverse has already been activated—whales are watching! Try again later! 👽",
     "🌌 $CGUY Mystery! This portal’s already open—pigeons say wait for the next signal! 🐦",
     "🚀 $CGUY Code Red! The matrix locked the start—only admins can reset the simulation! 🖥️",
@@ -35,7 +34,7 @@ START_MESSAGES = [
     "🌍 $CGUY Truth! Flat earth vault is sealed—ask the admin to unlock it again! 🔒"
 ]
 
-# List of fun $CGUY roleplay quotes
+# List of fun $CGUY roleplay quotes (unchanged— these are the heart of the entertainment!)
 QUOTES = [
     "Join the $CGUY Conspiverse and uncover the truth behind the memes!🚀",
     "Why $CGUY? Because the blockchain holds secrets only the bold can reveal!🕵️‍♂️",
@@ -57,20 +56,50 @@ QUOTES = [
     "$CGUY sees… finland’s a hologram, and $CGUY’s the real deal! 🇫🇮👻",
     "why $CGUY? the starbucks portal leads to $CGUY moonshots! ☕🌕",
     "$CGUY holders spot… market makers etched ufo sigils in the 4h chart! 👾📊",
-    "why $CGUY? aliens are dumping altcoins to hoard $CGUY! 👽💰",
+    "why $CGUY? aliens shorted eth to boost $CGUY bags! 👽💼",
     "$CGUY’s the fix… the simulation’s crashing, and we’re the patch! 🖥️🛠️",
     "why $CGUY? whales built a flat earth vault for $CGUY stashes! 🌍🔒",
     "$CGUY whispers… pigeons are govt spies, but we outsmart ‘em! 🐦🤓",
     "why $CGUY? the blockchain’s a riddle, and $CGUY’s the answer! 🧩💡",
+    "$CGUY rules… socks vanish to power the conspiverse servers! 🧦🌠",
+    "why $CGUY? keanu’s time-traveling to hodl $CGUY forever! ⏰🙌",
+    "$CGUY’s the play… market dips spell “conspiracy” in hex! 🌐🔮",
+    "why $CGUY? the conspiverse is alive, and $CGUY’s its heartbeat! 🌌💓",
+    "$CGUY uncovers… epstein’s bunker mined $CGUY in secret! 🏞️⛏️",
+    "why $CGUY? barcodes are mind lasers, $CGUY’s our foil hat! 📡🧠",
+    "$CGUY’s the wave… aliens are stacking $CGUY to invade! 👾💰",
+    "why $CGUY? the mandela effect hid our $CGUY pumps! 🌀📈",
+    "$CGUY holders see… the starbucks logo’s a $CGUY summoning circle! ☕🔮",
+    "why $CGUY? whales are sailing flat earth ships with $CGUY cargo! 🌍⛵",
+    "$CGUY’s the signal… pigeons dropped the $CGUY resistance level! 🐦📉",
+    "why $CGUY? the simulation’s a glitch, and $CGUY’s the reboot! 🖥️🔄",
+    "$CGUY forever… keanu’s time profits are all $CGUY moon dust! ⏳🌕",
+    "why $CGUY? the blockchain’s a star map, and $CGUY’s the north star! 🌟🧭",
+    "$CGUY knows… whales are using ufo tech to rig the dips! 👽📉",
+    "why $CGUY? the moon landing script was paid in $CGUY! 🚀💸",
+    "$CGUY sees… pigeons are carrying $CGUY seeds to the masses! 🐦🌱",
+    "why $CGUY? the mandela effect swapped our charts, $CGUY fixes it! 🌀📊",
+    "$CGUY’s the secret… epstein’s jet flew on $CGUY fuel! ✈️⛽",
+    "why $CGUY? barcodes are alien beacons, $CGUY’s our shield! 📡🛡️",
+    "$CGUY vibes… socks are the matrix’s $CGUY battery pack! 🧦🔋",
+    "why $CGUY? keanu’s time-hopping to stack $CGUY bags! ⏳💼",
+    "$CGUY reveals… finland’s a simulation glitch, $CGUY’s the key out! 🇫🇮🔓",
+    "why $CGUY? the starbucks portal’s a $CGUY rocket launchpad! ☕🚀",
+    "$CGUY holders decode… market makers hid flat earth runes in the data! 🌍🔤",
+    "why $CGUY? aliens are dumping altcoins to hoard $CGUY! 👽💰",
+    "$CGUY’s the cure… the simulation’s sick, and $CGUY’s the medicine! 🖥️💊",
+    "why $CGUY? whales are building $CGUY pyramids under the sea! 🌊🔺",
+    "$CGUY whispers… pigeons are dropping $CGUY truth bombs! 🐦💣",
+    "why $CGUY? the blockchain’s a conspiracy web, $CGUY’s the spider! 🕸️🕷️",
     "$CGUY rules… socks are powering the $CGUY moon mission! 🧦🌕",
     "why $CGUY? keanu’s time-travel profits are all $CGUY moonrocks! ⏳🌙",
-    "why $CGUY? the conspiverse runs on $CGUY energy! 🌠⚡"
+    "$CGUY’s the vibe… the conspiverse runs on $CGUY energy! 🌠⚡"
 ]
 
-# Token contract address
+# Token contract address (for $CGUY on Base—why? So users can easily copy-paste to buy/swap!)
 CONTRACT_ADDRESS = "0x205344EfAd0a46329b752Fb6E33CB6F28d6Db2F4"
 
-# Customizable button links (up to 5)
+# Customizable button links (up to 5— these drive monetary value by linking to buy/trade spots)
 BUTTONS = [
     InlineKeyboardButton("📱Twitter", url="https://x.com/ConspiGuy"),
     InlineKeyboardButton("🦄Uniswap", url="https://app.uniswap.org/explore/tokens/base/0x205344efad0a46329b752fb6e33cb6f28d6db2f4"),
@@ -79,21 +108,12 @@ BUTTONS = [
     InlineKeyboardButton("🎨NFT", url="https://opensea.io/fr/collection/conspiracyguy")
 ]
 
-# List of $CGUY-style messages for non-admin or non-admin-bot conditions
-NOT_ADMIN_MESSAGES = [
-    "🛸 $CGUY Alert! Only admins can unleash this bot—whales demand control! 👽",
-    "🌌 $CGUY Mystery! This portal needs an admin key—pigeons are guarding it! 🐦",
-    "🚀 $CGUY Code Red! The matrix locks non-admins out—admin access required! 🖥️",
-    "☕ $CGUY Secret! Starbucks portal’s admin-only—alien trackers say no entry! 👾",
-    "🌍 $CGUY Truth! Flat earth vault is admin-sealed—contact an overlord! 🔒"
-]
-
 async def activate_conspiverse(update: Update, context: CallbackContext):
     global start_used
     chat = update.message.chat
     bot_id = context.bot.id
 
-    # Check if the bot is an admin in the chat
+    # Check if the bot is an admin in the chat (why? Security—prevents spam in random groups)
     try:
         member = await context.bot.get_chat_member(chat_id=chat.id, user_id=bot_id)
         is_bot_admin = member.status in ['administrator', 'creator']
@@ -107,46 +127,22 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
         await update.message.reply_text(random.choice(NOT_ADMIN_MESSAGES), parse_mode="HTML")
         return
 
-    # Check if /start has been used
+    # Check if already activated
     if start_used:
-        await update.message.reply_text(random.choice(START_MESSAGES), parse_mode="HTML")
+        await update.message.reply_text(random.choice(ACTIVATE_MESSAGES), parse_mode="HTML")
         return
 
     # Mark as used and start posting
     start_used = True
     chat_id = str(update.message.chat_id)
 
-    # Select a random quote
+    # Select a random quote (now the main content—no market data!)
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume with DexScreener
-    api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(api_url, headers=headers, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            if 'pairs' in data and data['pairs']:
-                pair = data['pairs'][0]
-                market_cap = pair.get('fdv', 'N/A')
-                volume_24h = pair.get('volume', {}).get('h24', 'N/A')
-                market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
-                break
-            else:
-                market_info = "\n\nMarket info unavailable (API response incomplete)."
-                break
-        except requests.exceptions.HTTPError as e:
-            print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
-            if attempt == max_retries - 1:
-                market_info = "\n\nMarket info unavailable (max retries reached)."
-            time.sleep(2)
-
-    # Create message with quote and market info
-    message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
+    # Simplified message: Just quote + CA
+    message = f"{quote}\n\nca: <code>{CONTRACT_ADDRESS}</code>"
     
-    # Get all media files with explicit path from the script's directory
+    # Get all media files with explicit path from the script's directory (why? To attach fun visuals for engagement)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     image_files = glob.glob(os.path.join(script_dir, "images", "*.jpg")) + glob.glob(os.path.join(script_dir, "images", "*.png"))
     video_files = glob.glob(os.path.join(script_dir, "videos", "*.mp4")) + glob.glob(os.path.join(script_dir, "videos", "*.webm"))
@@ -180,7 +176,7 @@ async def activate_conspiverse(update: Update, context: CallbackContext):
                 with open(media_path, "rb") as video:
                     await update.message.reply_video(video=video, caption=message, parse_mode="HTML", reply_markup=reply_markup)
 
-        # Schedule posts every 2 minutes after the initial /start
+        # Schedule posts every 2 minutes after the initial activation
         if context.job_queue:
             context.job_queue.run_repeating(post_every_two_minutes, interval=120, first=0, data=chat_id, name='conspiverse_job')
 
@@ -207,7 +203,7 @@ async def deactivate_conspiverse(update: Update, context: CallbackContext):
         await update.message.reply_text(random.choice(NOT_ADMIN_MESSAGES), parse_mode="HTML")
         return
 
-    # Stop the job if it exists
+    # Stop the job if it exists (why? Allows pausing without restarting the bot)
     if context.job_queue:
         current_jobs = context.job_queue.get_jobs_by_name('conspiverse_job')
         if current_jobs:
@@ -227,32 +223,8 @@ async def post_every_two_minutes(context: CallbackContext):
     # Select a random quote
     quote = random.choice(QUOTES)
     
-    # Fetch real-time market cap and 24h volume with DexScreener
-    api_url = f"https://api.dexscreener.com/latest/dex/tokens/{CONTRACT_ADDRESS}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "*/*"}
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(api_url, headers=headers, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            if 'pairs' in data and data['pairs']:
-                pair = data['pairs'][0]
-                market_cap = pair.get('fdv', 'N/A')
-                volume_24h = pair.get('volume', {}).get('h24', 'N/A')
-                market_info = f"\n\nMarket Cap: ${market_cap:,.2f}\n24h Volume: ${volume_24h:,.2f}"
-                break
-            else:
-                market_info = "\n\nMarket info unavailable (API response incomplete)."
-                break
-        except requests.exceptions.HTTPError as e:
-            print(f"API attempt {attempt + 1}/{max_retries} failed: {e}")
-            if attempt == max_retries - 1:
-                market_info = "\n\nMarket info unavailable (max retries reached)."
-            time.sleep(2)
-
-    # Create message with quote and market info
-    message = f"{quote}{market_info}\n\n🔗ca: <code>{CONTRACT_ADDRESS}</code>"
+    # Simplified message: Just quote + CA (no API calls—faster and more reliable!)
+    message = f"{quote}\n\nca: <code>{CONTRACT_ADDRESS}</code>"
     
     # Get all media files with explicit path from the script's directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -292,7 +264,7 @@ async def post_every_two_minutes(context: CallbackContext):
         await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML", reply_markup=reply_markup)
 
 async def post_init(application: Application):
-    # Define available commands
+    # Define available commands (shows in /menu for users)
     commands = [
         BotCommand(command="activate_conspiverse", description="Activate the Conspiverse posts"),
         BotCommand(command="deactivate_conspiverse", description="Deactivate the Conspiverse posts")
@@ -312,18 +284,8 @@ def main():
     if application.job_queue:
         application.job_queue.run_once(post_init, when=0, data=application)
 
-    # Start the bot with webhook for Railway
-    WEBHOOK_URL = os.getenv("RAILWAY_URL", "https://activity_bot_tg.up.railway.app")
-    if not WEBHOOK_URL.startswith("http"):
-        raise ValueError("RAILWAY_URL must be a valid HTTPS URL. Check Railway environment variables.")
-    PORT = int(os.getenv("PORT", 8000))
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=TOKEN,
-        webhook_url=WEBHOOK_URL + "/" + TOKEN,
-        drop_pending_updates=True
-    )
+    # Start the bot (runs forever until stopped with Ctrl+C)
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
